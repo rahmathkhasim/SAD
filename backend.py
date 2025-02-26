@@ -14,6 +14,11 @@ class ApprovalRequest(BaseModel):
     resident_email: str
     status: str = "pending"
 
+# Root endpoint
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the FastAPI backend!"}
+
 @app.post("/request/{request_id}")
 def create_request(request_id: str, request: ApprovalRequest):
     pending_requests[request_id] = request.dict()
