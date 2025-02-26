@@ -33,7 +33,9 @@ def create_request(request_id: str, request: ApprovalRequest):
     save_requests(requests)
     return {"message": "Request created", "request_id": request_id}
 
+# Allow both GET and POST for approve/deny/blacklist
 @app.post("/approve/{request_id}")
+@app.get("/approve/{request_id}")
 def approve_request(request_id: str):
     requests = load_requests()
     if request_id not in requests:
@@ -43,6 +45,7 @@ def approve_request(request_id: str):
     return {"message": "Request approved", "request_id": request_id}
 
 @app.post("/deny/{request_id}")
+@app.get("/deny/{request_id}")
 def deny_request(request_id: str):
     requests = load_requests()
     if request_id not in requests:
@@ -52,6 +55,7 @@ def deny_request(request_id: str):
     return {"message": "Request denied", "request_id": request_id}
 
 @app.post("/blacklist/{request_id}")
+@app.get("/blacklist/{request_id}")
 def blacklist_request(request_id: str):
     requests = load_requests()
     if request_id not in requests:
