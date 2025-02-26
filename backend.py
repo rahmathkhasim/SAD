@@ -1,12 +1,24 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Dict
 import uvicorn
+import json
+import os
 
 app = FastAPI()
 
-# In-memory storage for pending requests
-pending_requests: Dict[str, Dict] = {}
+# File-based storage for pending requests
+STORAGE_FILE = "pending_requests.json"
+
+def load_requests() -> Dict[str, dict]:
+    if os.path.exists(STORAGE_FILE):
+        with open(STORAGE_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_requests(requests: Dict[str, dict]):
+    with open(STORAGE_FILE, 'w') as f:
+        json.dump(requests, f)
 
 class ApprovalRequest(BaseModel):
     visitor_name: str
@@ -14,47 +26,50 @@ class ApprovalRequest(BaseModel):
     resident_email: str
     status: str = "pending"
 
-# Root endpoint
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the FastAPI backend!"}
-
 @app.post("/request/{request_id}")
 def create_request(request_id: str, request: ApprovalRequest):
-    pending_requests[request_id] = request.dict()
+    requests = load_requests()
+    requests[request_id] = request.dict()
+    save_requests(requests)
     return {"message": "Request created", "request_id": request_id}
 
-@app.get("/approve/{request_id}")
+@app.post("/approve/{request_id}")
 def approve_request(request_id: str):
-    if request_id not in pending_requests:
+    requests = load_requests()
+    if request_id not in requests:
         raise HTTPException(status_code=404, detail="Request not found")
-    pending_requests[request_id]["status"] = "approved"
+    requests[request_id]["status"] = "approved"
+    save_requests(requests)
     return {"message": "Request approved", "request_id": request_id}
 
-@app.get("/deny/{request_id}")
+@app.post("/deny/{request_id}")
 def deny_request(request_id: str):
-    if request_id not in pending_requests:
+    requests = load_requests()
+    if request_id not in requests:
         raise HTTPException(status_code=404, detail="Request not found")
-    pending_requests[request_id]["status"] = "denied"
+    requests[request_id]["status"] = "denied"
+    save_requests(requests)
     return {"message": "Request denied", "request_id": request_id}
 
-@app.get("/blacklist/{request_id}")
+@app.post("/blacklist/{request_id}")
 def blacklist_request(request_id: str):
-    if request_id not in pending_requests:
+    requests = load_requests()
+    if request_id not in requests:
         raise HTTPException(status_code=404, detail="Request not found")
-    pending_requests[request_id]["status"] = "blacklisted"
+    requests[request_id]["status"] = "blacklisted"
+    save_requests(requests)
     return {"message": "Visitor blacklisted", "request_id": request_id}
 
 @app.get("/status/{request_id}")
 def get_status(request_id: str):
-    if request_id not in pending_requests:
+    requests = load_requests()
+    if request_id not in requests:
         raise HTTPException(status_code=404, detail="Request not found")
-    return pending_requests[request_id]
+    return requests[request_id]
 
-# New endpoint to get all pending requests
 @app.get("/status/all")
 def get_all_status():
-    return pending_requests
+    return load_requests()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
